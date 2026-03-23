@@ -2,7 +2,7 @@ import { Education, Experience, Hobby, Language, PersonalDetails, Skill } from '
 
 export const personalDetailsPreset: PersonalDetails = {
     fullName: 'Ouahabou Yelemcoure',
-    email: 'ouahabou.dev@gmail.com',
+    email: 'yelemcoureouahabou@gmail.com',
     phone: '+225 01 60 75 99 28',
     address: 'Abidjan, Côte d’Ivoire',
     photoUrl: '/profil.jpeg',
@@ -34,7 +34,7 @@ export const educationsPreset: Education[] = [
         degree: 'Licence en Informatique',
         school: 'Institut Universitaire d’Abidjan',
         startDate: '2023-09-01',
-        endDate: '2028-06-01',
+        endDate: '2026-06-01',
         description: 'Formation en développement logiciel, bases de données, réseaux et génie logiciel.'
     } , 
 
