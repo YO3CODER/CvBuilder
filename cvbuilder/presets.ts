@@ -33,8 +33,8 @@ export const educationsPreset: Education[] = [
         id: 'uuid-3',
         degree: 'Licence en Informatique',
         school: 'Institut Universitaire d’Abidjan',
-        startDate: '2021-09-01',
-        endDate: '2024-06-01',
+        startDate: '2023-09-01',
+        endDate: '2028-06-01',
         description: 'Formation en développement logiciel, bases de données, réseaux et génie logiciel.'
     } , 
 
