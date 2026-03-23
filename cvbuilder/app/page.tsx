@@ -1,5 +1,5 @@
 "use client"
-import { Eye, RotateCw, Save } from "lucide-react";
+import { Eye, RotateCw, Save, Share2 } from "lucide-react";
 import Image from "next/image";
 import PersonalDetailsForm from "./components/PersonalDetailsForm";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +25,8 @@ export default function Home() {
   const [languages, setLanguages] = useState<Language[]>(languagesPreset)
   const [skills, setSkills] = useState<Skill[]>(skillsPreset)
   const [hobbies, setHobbies] = useState<Hobby[]>(hobbiesPreset);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     const defaultImageUrl = '/profil.jpeg'
@@ -32,9 +34,7 @@ export default function Home() {
       .then((res) => res.blob())
       .then((blob) => {
         const defaultFile = new File([blob], "profile.jpg", { type: blob.type })
-
         setFile(defaultFile)
-
       })
   }, [])
 
@@ -93,17 +93,52 @@ export default function Home() {
 
   const cvPreviewRef = useRef(null)
 
+  // Pré-générer le PDF quand le modal s'ouvre
+  const handleOpenModal = async () => {
+    const modal = document.getElementById('my_modal_3') as HTMLDialogElement;
+    if (modal) {
+      modal.showModal();
+      
+      // Générer le PDF en arrière-plan
+      setIsSharing(true);
+      try {
+        const element = cvPreviewRef.current;
+        if (element) {
+          const canvas = await html2canvas(element, {
+            scale: 3,
+            useCORS: true,
+          });
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({
+            orientation: "portrait",
+            unit: 'mm',
+            format: "A4"
+          });
+          
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          
+          const blob = pdf.output('blob');
+          setPdfBlob(blob);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la pré-génération du PDF:', error);
+      } finally {
+        setIsSharing(false);
+      }
+    }
+  };
+
   const handleDownloadPdf = async () => {
     const element = cvPreviewRef.current
     if(element){
       try {
-
         const canvas = await html2canvas(element , {
           scale : 3,
           useCORS: true,
         })
         const imgData = canvas.toDataURL('image/png')
-
         const pdf = new jsPDF({
           orientation:"portrait",
           unit:'mm',
@@ -112,49 +147,125 @@ export default function Home() {
         
         const pdfWidth = pdf.internal.pageSize.getWidth()
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width 
-
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`cv.pdf`)
-
         const modal = document.getElementById('my_modal_3') as HTMLDialogElement
         if(modal){
           modal.close()
         }
-
         confetti({
              particleCount: 100,
              spread: 70 ,
              origin: {y:0.6},
              zIndex:9999
         })
-
       } catch (error) {
          console.error('Erreur lors de la génération du PDF :', error);
       }
     }
   }
 
+  const handleShare = async () => {
+    // Vérifier si le PDF est déjà généré
+    let blobToShare = pdfBlob;
+    
+    if (!blobToShare) {
+      setIsSharing(true);
+      try {
+        const element = cvPreviewRef.current;
+        if (!element) throw new Error('Élément non trouvé');
+        
+        const canvas = await html2canvas(element, {
+          scale: 3,
+          useCORS: true,
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: 'mm',
+          format: "A4"
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        
+        blobToShare = pdf.output('blob');
+        setPdfBlob(blobToShare);
+      } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        alert('Erreur lors de la préparation du CV');
+        setIsSharing(false);
+        return;
+      } finally {
+        setIsSharing(false);
+      }
+    }
+    
+    // Créer le fichier PDF à partager
+    const pdfFile = new File([blobToShare], `CV_${personalDetails.fullName || 'candidat'}.pdf`, { type: 'application/pdf' });
+    
+    try {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        // Partager UNIQUEMENT le fichier PDF, sans texte supplémentaire
+        await navigator.share({
+          files: [pdfFile]
+        });
+        
+        confetti({
+          particleCount: 150,
+          spread: 100,
+          origin: { y: 0.6 },
+          zIndex: 9999
+        });
+        
+        const modal = document.getElementById('my_modal_3') as HTMLDialogElement;
+        if (modal) {
+          modal.close();
+        }
+      } else {
+        // Fallback pour les navigateurs qui ne supportent pas le partage
+        const url = URL.createObjectURL(blobToShare);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `CV_${personalDetails.fullName || 'candidat'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('Votre navigateur ne supporte pas le partage direct. Le CV a été téléchargé.');
+      }
+    } catch (error) {
+      console.error('Erreur lors du partage:', error);
+      if (error instanceof Error && error.name !== 'AbortError') {
+        alert('Erreur lors du partage du CV. Veuillez réessayer.');
+      }
+    }
+  };
 
   return (
     <div>
       <div className="hidden lg:block">
         <section className="flex items-center h-screen">
 
-          <div className="w-1/3 h-full p-10 bg-base-200 scrollable no-scrollbar ">
+          <div className="w-1/3 h-full p-10 bg-base-200 scrollable no-scrollbar overflow-y-auto">
             <div className="mb-4 flex justify-between items-center">
               <h1 className="text-2xl font-bold italic">
                 Ami
                 <span className="text-primary">rah</span>
-
               </h1>
-
-              <button className="btn btn-primary" onClick={() => (document.getElementById('my_modal_3') as HTMLDialogElement).showModal()}>
-                Prévisualiser
-                <Eye className="w-4" />
-              </button>
+              
+              <div className="flex gap-2">
+                <button className="btn btn-primary" onClick={handleOpenModal}>
+                  Prévisualiser
+                  <Eye className="w-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex  flex-col gap-6 rounded-lg">
+            <div className="flex flex-col gap-6 rounded-lg">
 
               <div className="flex justify-between items-center">
                 <h1 className="badge badge-primary badge-outline">Qui êtes-vous ?</h1>
@@ -184,7 +295,6 @@ export default function Home() {
                 experience={experiences}
                 setExperiences={setExperience}
               />
-
 
               <div className="flex justify-between items-center">
                 <h1 className="badge badge-primary badge-outline">Éducations</h1>
@@ -240,17 +350,13 @@ export default function Home() {
                   <HobbyForm hobbies={hobbies} setHobbies={setHobbies} />
                 </div>
 
-
-
               </div>
-
 
             </div>
 
           </div>
 
-          <div className="w-2/3 h-full bg-base-100 bg-[url('/file.svg')] bg-cover  bg-center scrollable-preview relative">
-
+          <div className="w-2/3 h-full bg-base-100 bg-[url('/file.svg')] bg-cover bg-center scrollable-preview relative overflow-hidden">
 
             <div className="flex items-center justify-center fixed z-[9999] top-5 right-5">
               <input
@@ -276,9 +382,10 @@ export default function Home() {
             </select>
 
             <div
-              className="flex justify-center items-center"
+              className="flex justify-center items-center min-h-full"
               style={{
-                transform: `scale(${zoom / 200})`
+                transform: `scale(${zoom / 200})`,
+                transformOrigin: "center center"
               }}
             >
               <CVPreview
@@ -290,7 +397,6 @@ export default function Home() {
                 languages={languages}
                 hobbies={hobbies}
                 skills={skills}
-
               />
             </div>
 
@@ -298,25 +404,38 @@ export default function Home() {
 
         </section>
 
-
-
-
         <dialog id="my_modal_3" className="modal">
-          <div className="modal-box w-full max-w-6xl mx-auto px-4 sm;px-6 lg:px-8">
+          <div className="modal-box w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <form method="dialog">
-              {/* if there is a button in form, it will close the modal */}
               <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
             </form>
 
             <div className="mt-5">
-              <div className="flex justify-end mb-5">
+              <div className="flex justify-end mb-5 gap-2">
+                <button 
+                  onClick={handleShare} 
+                  className="btn btn-secondary" 
+                  disabled={isSharing}
+                >
+                  {isSharing ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      Préparation...
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 mr-2" />
+                      Partager
+                    </>
+                  )}
+                </button>
                 <button onClick={handleDownloadPdf} className="btn btn-primary">
+                  <Save className='w-4 mr-2' />
                   Télécharger
-                  <Save className='w-4' />
                 </button>
               </div>
 
-              <div className="w-full max-x-full overflow-auto">
+              <div className="w-full max-w-full overflow-auto">
                 <div className="w-full max-w-full flex justify-center items-center">
                   <CVPreview
                     personalDetails={personalDetails}
@@ -329,7 +448,6 @@ export default function Home() {
                     skills={skills}
                     download={true}
                     ref={cvPreviewRef}
-
                   />
                 </div>
               </div>
