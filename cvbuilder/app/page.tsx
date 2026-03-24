@@ -462,7 +462,7 @@ export default function Home() {
         <div className="hero bg-base-200 min-h-screen">
           <div className="hero-content text-center">
             <div className="max-w-md">
-              <h1 className="text-3xl font-bold">Désolé, le <b className="text-pink-400 italic"> Amirah </b>  est uniquement accessible sur ordinateur.</h1>
+              <h1 className="text-3xl font-bold">Désolé,  <b className="text-pink-400 italic"> Amirah </b>  est uniquement accessible sur ordinateur.</h1>
               <Image
                 src="/sad-sorry.gif"
                 width={500}
